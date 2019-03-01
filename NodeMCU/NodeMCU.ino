@@ -42,7 +42,6 @@ const long interval = 200;
 bool Turn [2] = {LOW,HIGH};
 bool CarMove [2] = {HIGH,LOW};
 int vel = 0;
-byte luces = 0;
 bool dir = 0;
 byte luces = B11111111;
 
@@ -121,6 +120,7 @@ void loop() {
   digitalWrite(In1,CarMove[0]);
   digitalWrite(In2,CarMove[1]);
   digitalWrite(EnB, dir);
+  shiftOut(ab, clk, LSBFIRST, luces);
   analogWrite(EnA, vel);
 }
 
@@ -245,9 +245,6 @@ void reverse(){
   CarMove[1] = LOW;
 }
 
-void lights(){
-  shiftOut(ab, clk, LSBFIRST, luces);
-}
 
 void stopCar(){
   vel = 0;
