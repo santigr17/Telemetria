@@ -12,21 +12,37 @@ const char* password = "pass1234";
 WiFiServer server(PORT);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
 
-unsigned long previousMillis = 0;
+unsigned long previousMillis = 0, temp = 0;
 const long interval = 200;
 
 #define EnA D5 // 
-#define In1 D4 // 
-#define In2 D3 // 0
-#define In3 D2 // 1 para ir hacia adelante
+#define In1 D4 // D4 en HIGH : retroceder
+#define In2 D3 // D3 en HIGH : avanzar
+#define In3 D2 // 
 #define EnB D1 // 
 #define In4 D0 // 0 para ir hacia adelante
 
+/**
+ * Lights
+ * Babcdefgh
+ * a: delanteras +
+ * b: traseras
+ * c: direccional izq
+ * d: direccional der
+ * e: 
+ * f:
+ * g:
+ * h:
+ */
+#define clk D6
+#define ab D7 
+
 
 //
-bool Turn [2] = {};
-bool CarMove [2] = {};
+bool Turn [2] = {LOW,HIGH};
+bool CarMove [2] = {HIGH,LOW};
 int vel = 0;
+byte luces = 0;
 bool dir = 0;
 
 void setup() {
@@ -37,8 +53,9 @@ void setup() {
   pinMode(In4,OUTPUT);
   pinMode(EnA,OUTPUT);
   pinMode(EnB,OUTPUT);
-  Serial.begin(115200);
-
+  pinMode(clk,OUTPUT);
+  pinMode(ab,OUTPUT);
+  
   IPAddress ip(192,168,43,200);
   IPAddress gateway(192,168,43,1);
   IPAddress subnet(255,255,255,0);
@@ -85,60 +102,59 @@ void loop() {
     previousMillis = currentMillis;
     for (i = 0; i < MAX_SRV_CLIENTS; i++) {
       if (serverClients[i] && serverClients[i].connected()) {
-        // lo que hace el cliente
-        if(process(serverClients[i].readStringUntil('\r'))){
-          serverClients[i].println("ok;");  
-        }
-        else{
-          serverClients[i].println("bad");
-        }
-        serverClients[i].stop();
+        if(serverClients[i].available()){
+          String mensaje = serverClients[i].readStringUntil('\r');
+          serverClients[i].flush();
+          const char * respuesta = "ok;"; 
+          if(!process(mensaje)){
+             respuesta = "invalid request, closing connection;";
+             serverClients[i].stop();
+          }
+          serverClients[i].println(respuesta);
+        }  
       }
     }
   }
-  digitalWrite(In1,Turn[0]);
-  digitalWrite(In2,Turn[1]);  
-  digitalWrite(In3,CarMove[0]);
-  digitalWrite(In4,CarMove[1]);
+  digitalWrite(In3,Turn[0]);
+  digitalWrite(In4,Turn[1]);  
+  digitalWrite(In1,CarMove[0]);
+  digitalWrite(In2,CarMove[1]);
   digitalWrite(EnB, dir);
   analogWrite(EnA, vel);
-  delay(5);
 }
 
 bool process(String input){
-  int begin = 0, delComa, del2puntos;
+  Serial.println("Processing....... ");
+  int comienzo = 0, delComa, del2puntos;
   bool result = false;
-  delComa = input.indexOf(';',begin);
+  delComa = input.indexOf(';',comienzo);
   
   while(delComa>0){
-  
-    String command = input.substring(begin, delComa);
-  
-    del2puntos = command.indexOf(':');
+    String comando = input.substring(comienzo, delComa);
+    Serial.print(" Processing comando: ");
+    Serial.println(comando);
+    del2puntos = comando.indexOf(':');
     
     if(del2puntos>0){
-      String llave = command.substring(0,del2puntos);
-      String valor = command.substring(del2puntos+1);
+      String llave = comando.substring(0,del2puntos);
+      String valor = comando.substring(del2puntos+1);
+      Serial.print("Llave ");
+      Serial.println(llave);
       definir(llave,valor, &result);
     }
-    delComa = input.indexOf(';',begin);
+    comienzo = delComa+1;
+    delComa = input.indexOf(';',comienzo);
   }
   return result;
 }
 
 void definir(String llave, String valor, bool *result){
-  Serial.println(valor.toInt());
-  Serial.println(valor.toInt());
   *result = true;
+  Serial.print("Llave ");
+  Serial.println(llave);
   if(llave == "pwm"){
-    vel = valor.toInt();
-    if(vel<0){
-      vel *= -1;
-      reverse();
-    } 
-    else{
-      forward();
-    }
+    Serial.println("Avanzar....");
+    vel = valor.toInt(); 
   }
   
   else if(llave == "dir"){
@@ -157,7 +173,6 @@ void definir(String llave, String valor, bool *result){
         break;
     }
   }
-  if(
   else if(llave == "ld"){
     if(valor.toInt()>0 and luces%10<1){
       luces+=B1;
@@ -196,7 +211,6 @@ void definir(String llave, String valor, bool *result){
       luces-=B1000;
     }
   }
-  
   else{
     Serial.println("Recived undefined Key value");
     *result = false;
@@ -205,29 +219,33 @@ void definir(String llave, String valor, bool *result){
 
 
 void straight(){
-  dir = 0;
+  dir = LOW;
 }
 
 void turnright(){
-  dir = 1;
-  Turn[0] = 1;
-  Turn[1] = 0;
+  dir = HIGH;
+  Turn[0] = HIGH;
+  Turn[1] = LOW;
 }
 
 void turnleft(){
-  dir = 1;
-  Turn[0] = 0;
-  Turn[1] = 1;
+  dir = HIGH;
+  Turn[0] = LOW;
+  Turn[1] = HIGH;
 }
 
 void forward(){
-  CarMove[0] = 0;
-  CarMove[1] = 1;
+  CarMove[0] = LOW;
+  CarMove[1] = HIGH;
 }
 
 void reverse(){
-  CarMove[0] = 1;
-  CarMove[1] = 0;
+  CarMove[0] = HIGH;
+  CarMove[1] = LOW;
+}
+
+void lights(){
+  shiftOut(ab, clk, LSBFIRST, luces);
 }
 
 void stopCar(){
