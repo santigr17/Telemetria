@@ -131,7 +131,14 @@ void definir(String llave, String valor, bool *result){
   Serial.println(valor.toInt());
   *result = true;
   if(llave == "pwm"){
-    vel = valor.toInt(); 
+    vel = valor.toInt();
+    if(vel<0){
+      vel *= -1;
+      reverse();
+    } 
+    else{
+      forward();
+    }
   }
   
   else if(llave == "dir"){
@@ -150,6 +157,46 @@ void definir(String llave, String valor, bool *result){
         break;
     }
   }
+  if(
+  else if(llave == "ld"){
+    if(valor.toInt()>0 and luces%10<1){
+      luces+=B1;
+    }
+    else{
+      luces-=B1;
+    }
+  }
+  else if(llave == "lt"){
+    if(valor.toInt()>0){
+      if(luces%100<10){
+        luces+=B10;
+      }
+    }
+    else{
+      luces-=B10;
+    }
+  }
+  else if(llave == "izq"){
+    if(valor.toInt()>0){
+      if(luces%1000<B100){
+        luces+=B0000100;
+      }
+    }
+    else{
+      luces-=B00000100;
+    }
+  }
+  else if(llave == "der"){
+    if(valor.toInt()>0){
+      if(luces%10000<B1000){
+        luces+=B1000;
+      }
+    }
+    else{
+      luces-=B1000;
+    }
+  }
+  
   else{
     Serial.println("Recived undefined Key value");
     *result = false;
