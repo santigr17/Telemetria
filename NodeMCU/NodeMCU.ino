@@ -28,6 +28,7 @@ bool Turn [2] = {};
 bool CarMove [2] = {};
 int vel = 0;
 bool dir = 0;
+byte luces = B11111111;
 
 void setup() {
   Serial.begin(115200);
@@ -157,7 +158,6 @@ void definir(String llave, String valor, bool *result){
         break;
     }
   }
-  if(
   else if(llave == "ld"){
     if(valor.toInt()>0 and luces%10<1){
       luces+=B1;
