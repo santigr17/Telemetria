@@ -1,6 +1,21 @@
 #include "quaternionFilters.h"
 #include "MPU9250.h"
 #include <Wire.h>
+#include <ESP8266WiFi.h>
+
+#define MAX_SRV_CLIENTS 1
+
+#define PORT 8080
+const char* ssid = "WiFiCar";
+const char* password = "pass1234";
+
+WiFiServer server(PORT);
+WiFiClient serverClients[MAX_SRV_CLIENTS];
+
+unsigned long previousMillis = 0, temp = 0;
+const long interval = 200;
+
+
 // Hardware setup:
 // MPU9250 Breakout --------- Arduino
 // VDD ---------------------- 3.3V
@@ -15,6 +30,27 @@ void setup() {
   Wire.begin(0,2);
   Serial.begin(115200);
   delay(10);
+
+  IPAddress ip(192,168,43,202);
+  IPAddress gateway(192,168,43,1);
+  IPAddress subnet(255,255,255,0);
+
+  WiFi.config(ip, gateway, subnet);
+
+  WiFi.mode(WIFI_STA);
+
+  WiFi.begin(ssid, password);
+ 
+  uint8_t i = 0;
+  while (WiFi.status() != WL_CONNECTED && i++ < 20) delay(500);
+  if (i == 21) {
+    Serial.print("Could not connect to: "); Serial.println(ssid);
+    while (1) delay(500);
+  } else {
+    Serial.println("It´s connected");
+  }
+
+  
   byte c = myIMU.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
   if(c == 0x71)
   {
@@ -32,6 +68,8 @@ void setup() {
     myIMU.magscale[0] = 1.25;
     myIMU.magscale[1] = 1.12;
     myIMU.magscale[2] = 0.76;
+
+    
   }
   else {
     Serial.print("Could not connect to MPU9250: 0x");
@@ -40,15 +78,45 @@ void setup() {
       delay(100); // Loop forever if communication doesn't happen
     }
   }
+  server.begin();
+  server.setNoDelay(true);
+
+
 }
 
 void loop() {
-  String message;
-  readMPU(&message);
-  delay(100);
-  Serial.println(message);
+  unsigned long currentMillis = millis();
+  uint8_t i;
+  //check if there are any new clients
+  if (server.hasClient()) {
+    for (i = 0; i < MAX_SRV_CLIENTS; i++) {
+      //find free/disconnected spot
+      if (!serverClients[i] || !serverClients[i].connected()) {
+        if (serverClients[i]) serverClients[i].stop();
+        serverClients[i] = server.available();
+        continue;
+      }
+    }
+    //no free/disconnected spot so reject
+    WiFiClient serverClient = server.available();
+    serverClient.stop();
+  }
 
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    for (i = 0; i < MAX_SRV_CLIENTS; i++) {
+      if (serverClients[i] && serverClients[i].connected()) {
+        String message;
+        readMPU(&message);
+        delay(25);
+        serverClients[i].println(message);
+        delay(25);
+        serverClients[i].stop();
+      }  
+    }
+  }
 }
+
 
 void readMPU(String* mns){
   if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
@@ -158,11 +226,9 @@ void readMPU(String* mns){
       String yaw = String(myIMU.yaw);
       *mns+=yaw;
       *mns+=";";
-      delay(500);
       
       myIMU.count = millis();
       myIMU.sumCount = 0;
       myIMU.sum = 0;
     }
 }
-
