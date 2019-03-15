@@ -13,7 +13,7 @@ WiFiServer server(PORT);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
 
 unsigned long previousMillis = 0, temp = 0;
-const long interval = 200;
+const long interval = 50;
 
 #define EnA D5 // 
 #define In1 D4 // D4 en HIGH : retroceder

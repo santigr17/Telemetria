@@ -4,13 +4,7 @@
 #include <ESP8266WiFi.h>
 
 #define MAX_SRV_CLIENTS 1
-#define pot A0
-#define btn1 D9
-#define btn2 D10
-#define clk D8
-#define AB D0
 
-String inputString;
 #define PORT 8080
 const char* ssid = "WiFiCar";
 const char* password = "pass1234";
@@ -19,7 +13,7 @@ WiFiServer server(PORT);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
 
 unsigned long previousMillis = 0, temp = 0;
-const long interval = 200;
+const long interval = 50;
 
 
 // Hardware setup:
@@ -33,11 +27,11 @@ const long interval = 200;
 MPU9250 myIMU;
 
 void setup() {
-  Wire.begin(D2,D1);
+  Wire.begin(0,2);
   Serial.begin(115200);
-  delay(100);
-    
-  IPAddress ip(192,168,43,204);
+  delay(10);
+
+  IPAddress ip(192,168,43,202);
   IPAddress gateway(192,168,43,1);
   IPAddress subnet(255,255,255,0);
 
@@ -46,19 +40,16 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   WiFi.begin(ssid, password);
-  Serial.println("Hola2");
+ 
   uint8_t i = 0;
   while (WiFi.status() != WL_CONNECTED && i++ < 20) delay(500);
   if (i == 21) {
     Serial.print("Could not connect to: "); Serial.println(ssid);
-    while (true){
-      Serial.print("Error");
-      delay(500); }
+    while (1) delay(500);
   } else {
     Serial.println("It´s connected");
   }
 
-  Serial.println("Trying to connect to MPU9250");  
   
   byte c = myIMU.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
   if(c == 0x71)
@@ -84,27 +75,11 @@ void setup() {
     Serial.print("Could not connect to MPU9250: 0x");
     Serial.println(c, HEX);
     while(true){
-      Serial.println("Error MPU not working   ");
       delay(100); // Loop forever if communication doesn't happen
     }
   }
-  
   server.begin();
   server.setNoDelay(true);
-
-  pinMode(btn1, INPUT);
-  pinMode(btn2, INPUT);
-  pinMode(pot, INPUT);
-  pinMode(clk,OUTPUT);
-  pinMode(AB,OUTPUT);
-  pinMode(D3,OUTPUT);
-  pinMode(D4,OUTPUT);
-  pinMode(D5,OUTPUT);
-  pinMode(D6,OUTPUT);
-  pinMode(D7,OUTPUT);
-  
-  
-  delay(10);
 
 
 }
@@ -131,143 +106,15 @@ void loop() {
     previousMillis = currentMillis;
     for (i = 0; i < MAX_SRV_CLIENTS; i++) {
       if (serverClients[i] && serverClients[i].connected()) {
-        if(serverClients[i].available()){
-          String message= serverClients[i].readStringUntil('\r');
-          String respuesta;
-          process(message, &respuesta);
-          serverClients[i].println(respuesta);
-        }  
-      }
+        String message;
+        readMPU(&message);
+        delay(10);
+        serverClients[i].println(message);
+        delay(5);
+        serverClients[i].stop();
+      }  
     }
   }
-}
-
-bool process(String input, String *respuesta){
-  Serial.println("Processing...........");
-  Serial.println(input);
-  if(input == "read;\r"){
-    *respuesta = leerDatos();
-  }
-  else{
-    int comienzo=0, delComa, del2puntos;
-    bool result=false;
-    delComa= input.indexOf(':');
-    while(delComa>0){
-      String comando = input.substring(comienzo, delComa);
-      Serial.print("processing comando:");
-      del2puntos=comando.indexOf(':');
-      if(del2puntos>0){
-        String llave= comando.substring(0,del2puntos);
-        String valor= comando.substring(del2puntos+1);
-        Serial.print("Llave");
-        Serial.println(llave);
-        *respuesta = definir(llave,valor);
-    }
-    comienzo=delComa+1;
-    delComa=input.indexOf(';',comienzo);
-    } 
-  }
-}
-
-String definir(String llave, String valor){
-  
-}
-
-String leerDatos(){
-    String message;
-    readBtns(&message);
-    readPot(&message);
-    readMPU(&message);
-    delay(50);
-    message+=";";
-    return message;
-}
-
-/**
- * Funcion para hacer print del display y los leds 
- */
-
- 
-void showValues(char leds[7],char num){
-  shiftOut(AB, clk, LSBFIRST,num2Byte(num));
-  for(int i = 0; i<6;i++){
-    bool OnOff = false;
-    if(leds[i]=='1'){OnOff = true;} 
-    digitalWrite(i+2,OnOff);
-  }
-}
-
-/**
- * Convertir un caracter de un numero en un digito para el display 7 segmentos
- * El ultimo bit siempre es en 1
- * Esta funcion solo sirve para displays de tipo catodo comun.
- */
-
-
-byte num2Byte(char num){
-  byte numBin=B11111111;
-  switch (num){
-   case '0':
-            //abcdefg.
-      numBin=B00000011;
-      break;
-   case '1':
-            //abcdefg.
-      numBin=B10011111;
-      break;
-   case '2':
-           //abcdefg.
-      numBin=B00100101;
-      break;
-   case '3':
-      numBin=B00001101;
-      break;
-   case '4':
-      numBin=B10011001;
-      break;
-   case '5':
-      numBin=B01001001;
-      break;
-   case '6':
-      numBin=B01000001;
-      break;
-   case '7':  
-            //abcdefg.
-      numBin=B00011111;
-      break;
-   case '8':
-            //abcdefg.
-      numBin=B00000001;
-      break;
-   case '9':
-            //abcdefg.
-      numBin=B00011001;
-      break;
-  }
-  return numBin;
-}
-
-
-
-void readBtns(String *message){
-  *message += "btn1=";
-  if(digitalRead(btn1)){*message += "1";}
-  else{*message += "0";}
-  *message += ",btn2=";
-  if(digitalRead(btn2)){*message += "1";}
-  else{*message += "0";}
-}
-
-/**
- * Funcion para leer el potenciometro
- */
-
-
-void readPot (String* mns){
-  *mns += ",pot=";
-  int value = analogRead(pot);
-  value = map(value, 0, 1024, 0, 100);
-  *mns += String(value);
 }
 
 
@@ -322,8 +169,6 @@ void readMPU(String* mns){
     /*MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
                          myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
                          myIMU.mx, myIMU.mz, myIMU.deltat);*/
-                         
-  
     MadgwickQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
                          myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
                          myIMU.mx, myIMU.mz, myIMU.deltat);
@@ -376,6 +221,11 @@ void readMPU(String* mns){
       *mns+=";ejeY:";       
       String roll = String(myIMU.roll);
       *mns+=roll;
+      
+      *mns+=";ejeZ:";       
+      String yaw = String(myIMU.yaw);
+      *mns+=yaw;
+      *mns+=";";
       
       myIMU.count = millis();
       myIMU.sumCount = 0;
