@@ -222,7 +222,7 @@ void readMPU(String* mns){
       String roll = String(myIMU.roll);
       *mns+=roll;
       
-      *mns+=";ejeZ:";       
+        *mns+=" ;ejeZ:";       
       String yaw = String(myIMU.yaw);
       *mns+=yaw;
       *mns+=";";

@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 
 // conexion a router
-#define MAX_SRV_CLIENTS 1
+#define MAX_SRV_CLIENTS 3
 // puerto del server
 #define PORT 7070
 const char* ssid = "WiFiCar";
@@ -108,9 +108,9 @@ void loop() {
           const char * respuesta = "ok;"; 
           if(!process(mensaje)){
              respuesta = "invalid request, closing connection;";
-             serverClients[i].stop();
           }
           serverClients[i].println(respuesta);
+          serverClients[i].stop();
         }  
       }
     }
