@@ -43,7 +43,9 @@ bool Turn [2] = {LOW,HIGH};
 bool CarMove [2] = {HIGH,LOW};
 int vel = 0;
 bool dir = 0;
-byte luces = B11111111;
+int battery = 0;
+             //abcd 
+byte luces = B00000000;
 
 void setup() {
   Serial.begin(115200);
@@ -76,6 +78,7 @@ void setup() {
   }
   server.begin();
   server.setNoDelay(true);
+  shiftOut(ab, clk, LSBFIRST, luces);
 
 }
 
@@ -106,6 +109,7 @@ void loop() {
           String mensaje = serverClients[i].readStringUntil('\r');
           serverClients[i].flush();
           const char * respuesta = "ok;"; 
+          Serial.println(mensaje);
           if(!process(mensaje)){
              respuesta = "invalid request, closing connection;";
           }
@@ -120,7 +124,7 @@ void loop() {
   digitalWrite(In1,CarMove[0]);
   digitalWrite(In2,CarMove[1]);
   digitalWrite(EnB, dir);
-  shiftOut(ab, clk, LSBFIRST, luces);
+  
   analogWrite(EnA, vel);
 }
 
@@ -181,50 +185,48 @@ void definir(String llave, String valor, bool *result){
         break;
     }
   }
-  else if(llave == "ld"){
-    if(valor.toInt()>0 and luces%10<1){
-      luces-=B1;
+  if(llave[0] == 'l'){
+    Serial.println("Encendiendo Luces");
+    bool encender = true;
+    byte myBit = B00000000;
+    if(valor == "0") encender = false;
+    switch (llave[1]){
+      case 'f':
+        Serial.println("Luces delanteras");
+        myBit = B01111111;      
+        break;
+      case 'b':
+        Serial.println("Luces traseras");
+        myBit = B10111111;
+        break;
+      case 'l':
+        Serial.println("Luces izquierda");
+        myBit = B11011111;
+        break;
+      case 'r':
+        Serial.println("Luces derechas");
+        myBit = B11101111;
+        break;
+      default:
+        Serial.println("Ninguna de las anteriores");
+        break;
     }
+    if(encender) luces = luces & myBit;
+    
     else{
-      luces+=B1;
+      Serial.println(myBit,BIN);
+      myBit = ~myBit;
+      luces = luces|myBit;
     }
-  }
-  else if(llave == "lt"){
-    if(valor.toInt()>0){
-      if(luces%100<10){
-        luces-=B10;
-      }
-    }
-    else{
-      luces+=B10;
-    }
-  }
-  else if(llave == "izq"){
-    if(valor.toInt()>0){
-      if(luces%1000<B100){
-        luces-=B0000100;
-      }
-    }
-    else{
-      luces+=B00000100;
-    }
-  }
-  else if(llave == "der"){
-    if(valor.toInt()>0){
-      if(luces%10000<B1000){
-        luces-=B1000;
-      }
-    }
-    else{
-      luces+=B1000;
-    }
+    
+    Serial.println(luces, BIN);
+    shiftOut(ab, clk, LSBFIRST, luces);
   }
   else{
     Serial.println("Recived undefined Key value");
     *result = false;
   }
 }
-
 
 void straight(){
   dir = LOW;
@@ -251,7 +253,6 @@ void reverse(){
   CarMove[0] = HIGH;
   CarMove[1] = LOW;
 }
-
 
 void stopCar(){
   vel = 0;
