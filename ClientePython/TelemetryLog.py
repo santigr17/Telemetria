@@ -59,39 +59,39 @@ RevCarScrolledTxt = tkscrolled.ScrolledText(C_root, height=10, width=45)
 RevCarScrolledTxt.place(x=400,y=50)
 
 
-C_indicadores = Canvas(C_root, width=760, height=200, bg='light blue')
-C_indicadores.place(x=20, y = 300)
-
-C_indicadores.create_arc(10, 50, 210, 250, fill="#F7FF79", outline="grey", start=160, extent=-140)
-indi_power = C_indicadores.create_arc(10, 50, 210, 250, fill="orange", outline="grey", start=160, extent=-10)
-
-C_indicadores.create_oval(250, 50, 350, 150, fill = "#0003B2")
-C_indicadores.create_oval(260, 60, 340, 140, fill = "light blue")
-indi_rotate = C_indicadores.create_polygon(center, fill='#0003B2', outline = "black", tags="volante")
-
-indi_reverse = C_indicadores.create_oval(200, 40, 230, 70, fill="grey")
-
-indi_lights = []
-for i in range(4):
-    indi_lights.append(C_indicadores.create_oval(400+i*60, 50, 450+i*60, 100, fill="grey"))
-
-def updateView():
-    indi = int(abs(power)/10 + 20)
-    C_indicadores.itemconfig(indi_power, extent = -indi)
-    
-    
-    items = C_indicadores.find_withtag('volante')
-    C_indicadores.delete(item)
-    if(dire == -1):    
-        C_indicadores.create_polygon(right_rotate, fill='#0003B2', outline = "black", tags="volante")
-  
-    elif(dire == 1):
-        C_indicadores.create_polygon(left_rotate, fill='#0003B2', outline = "black", tags="volante")
-    
-    else:
-        C_indicadores.create_polygon(center, fill='#0003B2', outline = "black", tags="volante")
-
-    
+##C_indicadores = Canvas(C_root, width=760, height=200, bg='light blue')
+##C_indicadores.place(x=20, y = 300)
+##
+##C_indicadores.create_arc(10, 50, 210, 250, fill="#F7FF79", outline="grey", start=160, extent=-140)
+##indi_power = C_indicadores.create_arc(10, 50, 210, 250, fill="orange", outline="grey", start=160, extent=-10)
+##
+##C_indicadores.create_oval(250, 50, 350, 150, fill = "#0003B2")
+##C_indicadores.create_oval(260, 60, 340, 140, fill = "light blue")
+##indi_rotate = C_indicadores.create_polygon(center, fill='#0003B2', outline = "black", tags="volante")
+##
+##indi_reverse = C_indicadores.create_oval(200, 40, 230, 70, fill="grey")
+##
+##indi_lights = []
+##for i in range(4):
+##    indi_lights.append(C_indicadores.create_oval(400+i*60, 50, 450+i*60, 100, fill="grey"))
+##
+##def updateView():
+##    indi = int(abs(power)/10 + 20)
+##    C_indicadores.itemconfig(indi_power, extent = -indi)
+##    
+##    
+##    items = C_indicadores.find_withtag('volante')
+##    C_indicadores.delete(item)
+##    if(dire == -1):    
+##        C_indicadores.create_polygon(right_rotate, fill='#0003B2', outline = "black", tags="volante")
+##  
+##    elif(dire == 1):
+##        C_indicadores.create_polygon(left_rotate, fill='#0003B2', outline = "black", tags="volante")
+##    
+##    else:
+##        C_indicadores.create_polygon(center, fill='#0003B2', outline = "black", tags="volante")
+##
+##    
 
 
 def send2Car(mns):
@@ -176,7 +176,7 @@ def active():
                 mns += "lf:"+str(lights[3])+";"
 
         send2Car(mns)
-        updateView()
+##        updateView()
      
 
 def keyPress(event):
