@@ -25,6 +25,8 @@ def conControl():
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect(control_address)
+                data=b''
+                mensaje=""
                 while data!=b'\n':
                     data=b''
                     data = sock.recv(1)
@@ -46,10 +48,10 @@ def conControl():
 def convert(mensaje, prom):
     a = mensaje[:len(mensaje)-1]
     b = a.split(";")
-    for i in range(len(b)):
+    for i in range(len(b)-1):
         c=b[i].split(":")[1]
         print(c)
-        prom[i]+=c
+        prom[i]+=float(c)
         print(prom[i])
 
 def procesar(ejes):
@@ -99,13 +101,14 @@ def conCarro():
             time.sleep(0.10)
 
 ##
-##p=Thread(target=conControl,args=())
-##p.start()
+#conControl()
+#p=Thread(target=conControl,args=())
+#p.start()
 ##
 ##q=Thread(target=conCarro,args=())
 ##q.start()
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+"""sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect(car_address)
 
 while(True):
@@ -117,4 +120,5 @@ while(True):
         print(str(e))
     finally:
         time.sleep(0.500)
+        """
 
