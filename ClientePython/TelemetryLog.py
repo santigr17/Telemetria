@@ -24,18 +24,24 @@ toggle = True
 sock = None
 
 
+#           ____________________________
+#__________/Función para cargar imagenes
+def cargarImg(nombre):
+    ruta=os.path.join('img',nombre)
+    imagen=PhotoImage(file=ruta)
+    return imagen
+
+
 #         ____________________________
 #________/Constantes
 vel = 10
 car_address = ('192.168.43.200', 7070)
-center = [260,100,340,100,300,140]
-left_rotate = [266, 80, 334, 120, 280, 134]
-right_rotate = [334, 80, 266, 120, 320, 134]
+
 #           ____________________________
 #__________/Ventana Principal
 root=Tk()
-root.title('Taller Tkinter')
-root.minsize(800,600)
+root.title('Proyecto 1')
+root.minsize(800,400)
 root.resizable(width=NO,height=NO)
 
 #           ______________________________
@@ -46,7 +52,7 @@ C_root.place(x=0,y=0)
 
 #           _____________________________________
 #__________/Se crea una entrada de texto y titulo
-L_ingresarCommand = Label(C_root,text="Nuevo Comando:",font=('Agency FB',14),bg='white',fg='blue')
+L_ingresarCommand = Label(C_root,text="New Command:",font=('Agency FB',14),bg='white',fg='blue')
 L_ingresarCommand.place(x=100,y=10)
 
 E_Command = Entry(C_root,width=30,font=('Agency FB',14))
@@ -59,39 +65,6 @@ RevCarScrolledTxt = tkscrolled.ScrolledText(C_root, height=10, width=45)
 RevCarScrolledTxt.place(x=400,y=50)
 
 
-##C_indicadores = Canvas(C_root, width=760, height=200, bg='light blue')
-##C_indicadores.place(x=20, y = 300)
-##
-##C_indicadores.create_arc(10, 50, 210, 250, fill="#F7FF79", outline="grey", start=160, extent=-140)
-##indi_power = C_indicadores.create_arc(10, 50, 210, 250, fill="orange", outline="grey", start=160, extent=-10)
-##
-##C_indicadores.create_oval(250, 50, 350, 150, fill = "#0003B2")
-##C_indicadores.create_oval(260, 60, 340, 140, fill = "light blue")
-##indi_rotate = C_indicadores.create_polygon(center, fill='#0003B2', outline = "black", tags="volante")
-##
-##indi_reverse = C_indicadores.create_oval(200, 40, 230, 70, fill="grey")
-##
-##indi_lights = []
-##for i in range(4):
-##    indi_lights.append(C_indicadores.create_oval(400+i*60, 50, 450+i*60, 100, fill="grey"))
-##
-##def updateView():
-##    indi = int(abs(power)/10 + 20)
-##    C_indicadores.itemconfig(indi_power, extent = -indi)
-##    
-##    
-##    items = C_indicadores.find_withtag('volante')
-##    C_indicadores.delete(item)
-##    if(dire == -1):    
-##        C_indicadores.create_polygon(right_rotate, fill='#0003B2', outline = "black", tags="volante")
-##  
-##    elif(dire == 1):
-##        C_indicadores.create_polygon(left_rotate, fill='#0003B2', outline = "black", tags="volante")
-##    
-##    else:
-##        C_indicadores.create_polygon(center, fill='#0003B2', outline = "black", tags="volante")
-##
-##    
 
 
 def send2Car(mns):
@@ -179,16 +152,17 @@ def active():
 ##        updateView()
      
 
-def keyPress(event):
-    global pressedKeys
-    keyName = event.keysym
-    if(keyName in ['Up','Down','Right','Left', 'l', 'r', 'b', 'f', 'h', 'Space'] and not (keyName in pressedKeys)):
-        if(pressedKeys == []):
-            pressedKeys.append(keyName)
-            p = Thread(target=active,args=())
-            p.start()
-        else:
-            pressedKeys.append(keyName)
+def keyPress(event, focus):
+    if(focus):
+        global pressedKeys
+        keyName = event.keysym
+        if(keyName in ['Up','Down','Right','Left', 'l', 'r', 'b', 'f', 'h', 'Space'] and not (keyName in pressedKeys)):
+            if(pressedKeys == []):
+                pressedKeys.append(keyName)
+                p = Thread(target=active,args=())
+                p.start()
+            else:
+                pressedKeys.append(keyName)
             
 
 def default(keyName):
@@ -210,11 +184,12 @@ def default(keyName):
 
 
 
-def keyRelease(event):
-    keyName = event.keysym
-    if(keyName in ['Up','Down','Right','Left', 'h','l', 'r', 'b', 'f', 'Space'] and (keyName in pressedKeys)):            
-        pressedKeys.remove(keyName)
-        default(keyName)
+def keyRelease(event, focus):
+    if(focus):
+        keyName = event.keysym
+        if(keyName in ['Up','Down','Right','Left', 'h','l', 'r', 'b', 'f', 'Space'] and (keyName in pressedKeys)):            
+            pressedKeys.remove(keyName)
+            default(keyName)
 
 
 def send ():
@@ -222,10 +197,42 @@ def send ():
     send2Car(mns)
 
 
+def pantalla_controles():
+    Controles = Toplevel()
+    Controles.title('Controles Teclado')
+    Controles.minsize(400,400)
+    Controles.resizable(width=NO, height=NO)
 
+    C_controles=Canvas(Controles, width=400, height=400, bg='white')
+    C_controles.place(x=0,y=0)
 
-root.bind_all('<KeyPress>', keyPress)
-root.bind_all('<KeyRelease>', keyRelease)
+    Controles.focus_set()
+    #           ____________________________
+    #__________/Cargar una imagen
+    down=cargarImg("down.gif")
+    down_img=Label(C_controles,bg='white', image=down)
+    down_img.place(x=150,y=225)
+    
+    up = cargarImg("up.gif")
+    up_img = Label(C_controles,bg='white', image=up)
+    up_img.place(x=150,y=75)
+
+    left = cargarImg("left.gif")
+    left_img = Label(C_controles,bg='white', image=left)
+    left_img.place(x=75,y=150)
+
+    right=cargarImg("right.gif")
+    right_img=Label(C_controles,bg='white', image=right)
+    right_img.place(x=225,y=150)
+    
+    
+    Controles.bind_all('<KeyPress>', lambda event: keyPress(event, root.focus_get() == Controles)) 
+    Controles.bind_all('<KeyRelease>', lambda event: keyRelease(event, Controles.focus_get() == Controles))
+    
+    Controles.update()
+
+    
+
 root.bind('<Return>', send)
 
 
@@ -235,7 +242,10 @@ root.bind('<Return>', send)
 #           ____________________________
 #__________/Botones de ventana principal
 
-Btn_ConnectControl = Button(C_root,text='Enviar',command=send,fg='white',bg='blue', font=('Agency FB',12))
+Btn_ConnectControl = Button(C_root,text='Send',command=send,fg='white',bg='blue', font=('Agency FB',12))
 Btn_ConnectControl.place(x=450,y=10)
+
+Btn_Controls = Button(C_root,text='Arrows',command=pantalla_controles,fg='white',bg='blue', font=('Agency FB',12))
+Btn_Controls.place(x=500,y=10)
 
 root.mainloop()
