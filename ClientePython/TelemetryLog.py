@@ -8,20 +8,8 @@ import os                           # ruta = os.path.join('')
 import time                         # time.sleep(x)
 from tkinter import messagebox      # AskYesNo ()
 import tkinter.scrolledtext as tkscrolled
-
-import socket
-
-
-#           ____________________________
-#__________/Variables Globales
-global sock, pressedKeys, power, dire, lights, horn, toggle
-pressedKeys = []
-lights = [1,1,1,1]
-power = 0
-dire = 0
-horn = 0
-toggle = True
-sock = None
+##### Biblioteca para el Carro
+import wifiConnection
 
 
 #           ____________________________
@@ -31,11 +19,6 @@ def cargarImg(nombre):
     imagen=PhotoImage(file=ruta)
     return imagen
 
-
-#         ____________________________
-#________/Constantes
-vel = 10
-car_address = ('192.168.43.200', 7070)
 
 #           ____________________________
 #__________/Ventana Principal
@@ -65,138 +48,138 @@ RevCarScrolledTxt = tkscrolled.ScrolledText(C_root, height=10, width=45)
 RevCarScrolledTxt.place(x=400,y=50)
 
 
+#           _____________________________________
+#__________/Creando el nodemcu
+myCar = wifiConnection.NodeMCU(keep_log=True)
+myCar.start()
 
-
-def send2Car(mns):
-    global sock
-    response = ""
-    try:
-        if(sock == None):
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #sock.connect(car_address)
-        mns += "\r\n"
-        #sock.sendall(mns.encode())
-        
-        SentCarScrolledTxt.insert(END, mns)
-        SentCarScrolledTxt.see("end")
-
-        data=b''
-        response = "ok;"
-        time.sleep(0.5)
-##        while data!=b'\r':
-##            data = sock.recv(1)
-##            response+=data.decode("utf-8")
-        if(response[-1]!= "\n"): response+="\n"
-        
-        RevCarScrolledTxt.insert(END, response)
-        RevCarScrolledTxt.see('end')
-
-    except Exception as e:
-        print(str(e))
-        response = "NULL"
-    finally:
-        sock.close()
-        
-    return response
-
-     
-    
-def active():
-    global pressedKeys, toggle, power, dire, lights, horn
-    while(pressedKeys != []):
-        mns = ""
-        for i in pressedKeys:
-            if i == 'Up':
-                if(power < 1000):
-                   power+=vel
-                   mns += "pwm:"+str(power)+";"
-    
-            elif i == 'Down':
-                if(power > -1000):
-                    power-=vel
-                    mns += "pwm:"+str(power)+";"
-
-            elif i == 'Right':
-                dire = 1
-                mns += "dir:"+str(dire)+";"
-
-            elif i == 'Left':
-                dire = -1
-                mns += "dir:"+str(dire)+";"
-
-            elif i == 'h':
-                horn = 1
-                mns += "horn:"+str(horn)+";"
-
-            elif i == 'l' and toggle:
-                toggle = False
-                lights[0] = not lights[0]
-                mns += "ll:"+str(lights[0])+";"
-            
-            elif i == 'r' and toggle:
-                toggle = False
-                lights[1] = not lights[1]
-                mns += "lr:"+str(lights[1])+";"
-
-            elif i == 'b' and toggle:
-                toggle = False
-                lights[2] = not lights[2]
-                mns += "lb:"+str(lights[2])+";"
-
-            elif i == 'f' and toggle:
-                toggle = False
-                lights[3] = not lights[3]
-                mns += "lf:"+str(lights[3])+";"
-
-        send2Car(mns)
-##        updateView()
-     
-
-def keyPress(event, focus):
-    if(focus):
-        global pressedKeys
-        keyName = event.keysym
-        if(keyName in ['Up','Down','Right','Left', 'l', 'r', 'b', 'f', 'h', 'Space'] and not (keyName in pressedKeys)):
-            if(pressedKeys == []):
-                pressedKeys.append(keyName)
-                p = Thread(target=active,args=())
-                p.start()
-            else:
-                pressedKeys.append(keyName)
-            
-
-def default(keyName):
-    global pressedKeys, power, dire, horn, toggle
-    mns = ""
-    if keyName == 'Up' or keyName == 'Down' :
-        power=0
-        mns += "pwm:"+str(power)+";"
-    elif keyName == 'Right' or keyName == 'Left':
-        dire = 0
-        mns += "dire:"+str(dire)+";"
-    elif keyName == 'h':
-        horn = 0
-        mns += "horn:"+str(horn)+";"
-    else:
-        toggle = True
-    
-    send2Car(mns)
-
-
-
-def keyRelease(event, focus):
-    if(focus):
-        keyName = event.keysym
-        if(keyName in ['Up','Down','Right','Left', 'h','l', 'r', 'b', 'f', 'Space'] and (keyName in pressedKeys)):            
-            pressedKeys.remove(keyName)
-            default(keyName)
-
-
-def send ():
+def send (event):
     mns = str(E_Command.get())
-    send2Car(mns)
+    if(len(mns)>0 and mns[-1] == ";"):
+        E_Command.delete(0, 'end')
+        myCar.send(mns)
+    
+root.bind('<Return>', send)
+
+#           ____________________________
+#__________/Variables Carro
+global power
+power = 0
+
+lights = [0b1,0b1,0b1,0b1]
+
+dire = 0
+horn = 0
+toggle = True
+vel = 10
 
 
+def get_log():
+    indice = 0
+    while(myCar.keep_log):
+        while(indice < len(myCar.log)):
+            mnsSend = "[{0}] cmd: {1}\n".format(indice,myCar.log[indice][0])
+            SentCarScrolledTxt.insert(END,mnsSend)
+            SentCarScrolledTxt.see("end")
+
+            mnsRecv = "[{0}] result: {1}\n".format(indice,myCar.log[indice][1])
+            RevCarScrolledTxt.insert(END, mnsRecv)
+            RevCarScrolledTxt.see('end')
+
+            indice+=1
+        time.sleep(0.200)
+    
+p = Thread(target=get_log)
+p.start()
+           
+
+
+def move (event, focus):
+    if(focus):
+        global power
+        mns = ""
+        if event.keysym == 'Up':
+            if(power < 1000):
+                if(power<300):
+                    power +=vel+100
+                else:
+                    power+=vel
+                mns = "pwm:{0};".format(power)
+            
+        else:
+            if(power > -1000):
+                if(power>-300):
+                    power -= vel+100
+                else:
+                    power-=vel
+                mns = "pwm:{0};".format(power)
+        if(mns!=""):
+            myCar.send(mns)
+        time.sleep(0.2)
+
+                
+def active(key):
+    mns = ""
+    if key== 'Right':
+        mns += "dire:1;"
+
+    elif key== 'Left':
+        mns += "dire:-1;"
+
+    elif key== 'h':
+            mns += "horn:1;"
+
+    elif key== 'l':
+        lights[0] = not lights[0]
+        mns += "ll:{0};".format(str(lights[0]))
+    
+    elif key== 'r':
+        lights[1] = not lights[1]
+        
+        mns += "lr:{0};".format(str(lights[1]))
+
+    elif key== 'b' :
+        lights[2] = not lights[2]
+        mns += "lb:{0};".format(str(lights[2]))
+
+    elif key== 'f' :
+        lights[3] = not lights[3]
+        mns += "lf:{0};".format(str(lights[3]))
+
+    if(mns!=""):
+        myCar.send(mns)
+
+
+
+def restore(keyName):
+    mns = ""
+    if keyName == 'Right' or keyName == 'Left':
+        mns = "dire:0;"
+        
+    elif keyName == 'h':
+        mns += "horn:0;"
+
+    myCar.send(mns)
+        
+
+def keyPress(event, focus, pressedKeys):
+    if(focus):
+        keyName = event.keysym
+        if(keyName in ['Right','Left', 'h','l', 'r', 'b', 'f', 'Space' ]):
+            if(not (keyName in pressedKeys)):
+                pressedKeys.append(keyName)
+                active(keyName)
+    
+                
+
+            
+def keyRelease(event, pressedKeys):
+    keyName = event.keysym
+    if(keyName in ['Right','Left', 'h','l', 'r', 'b', 'f', 'Space'] and (keyName in pressedKeys)):            
+        pressedKeys.remove(keyName)
+        restore(keyName)
+
+            
 def pantalla_controles():
     Controles = Toplevel()
     Controles.title('Controles Teclado')
@@ -224,20 +207,16 @@ def pantalla_controles():
     right=cargarImg("right.gif")
     right_img=Label(C_controles,bg='white', image=right)
     right_img.place(x=225,y=150)
+
+    pressedKeys = [] 
+
+    Controles.bind('<Up>', lambda event: move(event, root.focus_get() == Controles))
+    Controles.bind('<Down>', lambda event: move(event, root.focus_get() == Controles))
+    Controles.bind_all('<KeyPress>', lambda event: keyPress(event, root.focus_get() == Controles, pressedKeys)) 
+    Controles.bind_all('<KeyRelease>', lambda event: keyRelease(event, pressedKeys))
     
+    Controles.mainloop()
     
-    Controles.bind_all('<KeyPress>', lambda event: keyPress(event, root.focus_get() == Controles)) 
-    Controles.bind_all('<KeyRelease>', lambda event: keyRelease(event, Controles.focus_get() == Controles))
-    
-    Controles.update()
-
-    
-
-root.bind('<Return>', send)
-
-
-
-
 
 #           ____________________________
 #__________/Botones de ventana principal

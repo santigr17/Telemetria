@@ -11,13 +11,22 @@ class NodeMCU(Thread):
     busy = False
     error = False
     interval = 0.050
+    loop = False
     
-    def __init__(self, address = '192.168.43.200', port = 7070 ):
+    keep_log = False
+    new_log = []
+    log = []
+    
+    def __init__(self, ip = '192.168.43.200', port = 7070, keep_log = False):
         Thread.__init__(self)
-        self.start()
+        self.node_address = (ip,port)
+        if(keep_log):
+            self.keep_log = True
+        
     
     def run(self):
-        while(True):
+        self.loop = True
+        while(self.loop):
             if(len(self.pending_mns)>0):
                 self.busy = True
                 message = ""
@@ -25,6 +34,10 @@ class NodeMCU(Thread):
                     message+=i
                     self.pending_mns.remove(i)
                 message+="\r"
+
+                if(self.keep_log):
+                    self.new_log = [message,""]
+                
                 try:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     sock.settimeout(3)
@@ -37,19 +50,28 @@ class NodeMCU(Thread):
                         while data != b'\r':
                             data = sock.recv(1)
                             response+=data.decode("utf-8")
-                            
+
                         self.received_mns.append(response)
-                        
+
+                        if(self.keep_log):
+                            self.new_log[1] = response
+                    
                     except socket.timeout as error:
                         print("Timeout", 2,"s")
                         self.error=True
                         self.error_list.append(error)
+
+                        if(self.keep_log):
+                            self.new_log[1] = str(error)
                         
                     except Exception as a:
                         print(str(a))
                         self.error=True
                         self.error_list.append(a)
-                        
+
+                        if(self.keep_log):
+                            self.new_log[1] = str(a)
+                            
                     finally:
                         sock.close()
                         
@@ -58,20 +80,42 @@ class NodeMCU(Thread):
                     print(str(e))
                     self.error=True
                     self.error_list.append(e)
-                    
+
+                    if(self.keep_log):
+                            self.new_log[1] = str(e)
+
+                            
+                if(self.keep_log):
+                    self.log.append(self.new_log)
+                            
                 self.busy = False    
             time.sleep(self.interval)
+
+    def stop(self):
+        self.loop = False
         
     def send(self,message):
-        mns_format = False
-        if(isinstance(message,str) and message[-1]==";"):
-            self.pending_mns.append(message)
-            mns_format = True
-        return mns_format
+        if(self.loop):
+            if(isinstance(message,str) and len(message)>0 and message[-1]==";"):
+                self.pending_mns.append(message)
+        else:
+            print("Start the loop before trying to send messages")
 
-    def read(self):
+    def readstr(self):
         answer = ""
         for i in self.received_mns:
             response+=i
             self.sending_list.remove(i)
         return response
+
+    def readlist(self):
+        temp = self.received_mns.copy()
+        self.received_mns = []
+        return temp
+    
+    def errors(self):
+        log = ""
+        for i in self.error_list:
+            log+=i
+            self.error_list.remove(i)
+        return log
