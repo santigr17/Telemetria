@@ -66,12 +66,12 @@ root.bind('<Return>', send)
 global power
 power = 0
 
-lights = [0b1,0b1,0b1,0b1]
+lights = [1,1,1,1]
 
 dire = 0
 horn = 0
 toggle = True
-vel = 10
+vel = 20
 
 
 def get_log():
@@ -100,19 +100,23 @@ def move (event, focus):
         mns = ""
         if event.keysym == 'Up':
             if(power < 1000):
-                if(power<300):
+                value = power
+                if(power<350):
                     power +=vel+100
+                    value = 0
                 else:
                     power+=vel
-                mns = "pwm:{0};".format(power)
+                mns = "pwm:{0};".format(value)
             
         else:
             if(power > -1000):
-                if(power>-300):
+                value = power
+                if(power>-350):
                     power -= vel+100
+                    value = 0
                 else:
                     power-=vel
-                mns = "pwm:{0};".format(power)
+                mns = "pwm:{0};".format(value)
         if(mns!=""):
             myCar.send(mns)
         time.sleep(0.2)
@@ -121,30 +125,33 @@ def move (event, focus):
 def active(key):
     mns = ""
     if key== 'Right':
-        mns += "dire:1;"
+        mns += "dir:1;dir:-1;"
 
     elif key== 'Left':
-        mns += "dire:-1;"
+        mns += "dir:-1;dir:1;"
 
     elif key== 'h':
             mns += "horn:1;"
 
     elif key== 'l':
         lights[0] = not lights[0]
-        mns += "ll:{0};".format(str(lights[0]))
+        mns += "ll:{0};".format(str(int(lights[0])))
     
     elif key== 'r':
         lights[1] = not lights[1]
-        
-        mns += "lr:{0};".format(str(lights[1]))
+        mns += "lr:{0};".format(str(int(lights[1])))
 
     elif key== 'b' :
         lights[2] = not lights[2]
-        mns += "lb:{0};".format(str(lights[2]))
+        mns += "lb:{0};".format(str(int(lights[2])))
 
     elif key== 'f' :
         lights[3] = not lights[3]
-        mns += "lf:{0};".format(str(lights[3]))
+        mns += "lf:{0};".format(str(int(lights[3])))
+
+    elif key == 's':
+        mns += "sense;"
+        
 
     if(mns!=""):
         myCar.send(mns)
@@ -154,7 +161,7 @@ def active(key):
 def restore(keyName):
     mns = ""
     if keyName == 'Right' or keyName == 'Left':
-        mns = "dire:0;"
+        mns = "dir:0;"
         
     elif keyName == 'h':
         mns += "horn:0;"
@@ -165,7 +172,7 @@ def restore(keyName):
 def keyPress(event, focus, pressedKeys):
     if(focus):
         keyName = event.keysym
-        if(keyName in ['Right','Left', 'h','l', 'r', 'b', 'f', 'Space' ]):
+        if(keyName in ['Right','Left', 'h','l', 'r', 'b', 'f', 's' ]):
             if(not (keyName in pressedKeys)):
                 pressedKeys.append(keyName)
                 active(keyName)
@@ -175,7 +182,7 @@ def keyPress(event, focus, pressedKeys):
             
 def keyRelease(event, pressedKeys):
     keyName = event.keysym
-    if(keyName in ['Right','Left', 'h','l', 'r', 'b', 'f', 'Space'] and (keyName in pressedKeys)):            
+    if(keyName in ['Right','Left', 'h','l', 'r', 'b', 'f', 's'] and (keyName in pressedKeys)):
         pressedKeys.remove(keyName)
         restore(keyName)
 

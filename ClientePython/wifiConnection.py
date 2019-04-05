@@ -44,7 +44,7 @@ class NodeMCU(Thread):
                     sock.connect(self.node_address)
                     
                     try:
-                        sock.sendall(mns.encode())
+                        sock.sendall(message.encode())
                         data=b''
                         response = ""
                         while data != b'\r':
