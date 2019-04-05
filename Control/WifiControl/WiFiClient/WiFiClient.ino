@@ -1,13 +1,3 @@
-#include "quaternionFilters.h"
-#include "MPU9250.h"
-#include <Wire.h>
-#include <ESP8266WiFi.h>
-
-#define PORT 7070
-#define HOST "192.168.43.200"
-const char* ssid = "WiFiCar";
-const char* password = "pass1234";
-
 // Hardware setup:
 // MPU9250 Breakout --------- Arduino
 // VDD ---------------------- 3.3V
@@ -16,30 +6,84 @@ const char* password = "pass1234";
 // SCL ----------------------- A5
 // GND ---------------------- GND
 
-MPU9250 myIMU;
+#include "quaternionFilters.h"
+#include "MPU9250.h"
+#include <Wire.h>
+#include <ESP8266WiFi.h>
+
+//Constants for network connection 
+const char* ssid      = "WiFiCar";
+const char* password  = "pass1234";
+const char* host      = "192.168.43.200";
+const int   port      = 8080;
+
+//Device instances being used
+MPU9250     myIMU;
+WiFiClient  client;
+
+//Task constants and variables
+const uint8_t           maxAttempsNetwork = 20;
+const uint8_t           maxAttempsHost    = 20;
+const unsigned long int interval          = 50;
+
+float pitch;
+float roll;
+float yaw;
+
+
 
 void setup() {
-  Wire.begin(0,2);
+  Wire.begin(0, 2);
   Serial.begin(115200);
   delay(10);
 
+  connectESP();
+  connectMPU();
+  
+}
+
+void connectESP(){
+  //Connecting to the wifi network
+  Serial.println("\n\nConnecting to" + String(ssid));
+  //Sets ESP8266 to be a client explicitly
+  WiFi.mode(WIFI_STA); 
+  //Connects to the network
   WiFi.begin(ssid, password);
- 
-  uint8_t i = 0;
-  while (WiFi.status() != WL_CONNECTED && i++ < 20) delay(500);
-  if (i == 21)
-  {
-    Serial.print("Could not connect to: "); Serial.println(ssid);
-    while (true) delay(1000);
-  } 
-  else
-  {
-    Serial.println("It´s connected");
+
+  //Tries to connect to a server as a client as many times
+  for(uint8_t attempt = 0; attempt < maxAttempsNetwork; ++attempt){
+    if(WiFi.status() == WL_CONNECTED) break;
+    delay(500); //Try check 500ms later
+    Serial.printf("Attempt %d failed to connect to network\n", attempt);
   }
 
+  //Check for connection one more time and tries to connect to host
+  if(WiFi.status() == WL_CONNECTED){
+    Serial.println("WiFi connected to IP: " + client.localIP());
+    Serial.println("Trying to connect to host: " + String(host));
+    
+    //Attempts to connect to host
+    uint8_t hostAttempt = 0;
+    for(; hostAttempt < maxAttempsHost; ++hostAttempt){
+      if(client.connect(host, port)){
+        hostAttempt = 0; //Condition to check later
+        break;
+      }
+      Serial.printf("Attempt %d failed to connect to host\n", hostAttempt);
+      delay(2000);
+    } 
+    
+    //It connected 
+    if(hostAttempt == 0) Serial.println("Fully connected");
+    else Serial.println("Failed to connect to host");
+  }
+  else Serial.println("WiFi could not connect");
+}
+
+void connectMPU(){
   byte c = myIMU.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
-  if(c == 0x71)
-  {
+  //Checks for connection of MPU
+  if(c == 0x71){
     Serial.println("\nMPU9250 is online...");
     myIMU.MPU9250SelfTest(myIMU.SelfTest);
     myIMU.calibrateMPU9250(myIMU.gyroBias, myIMU.accelBias);
@@ -56,38 +100,12 @@ void setup() {
     myIMU.magscale[2] = 0.76;
   }
   else {
-    Serial.print("Could not connect to MPU9250: 0x");
-    Serial.println(c, HEX);
-    while(true){
-      delay(1000); // Loop forever if communication doesn't happen
-    }
+    Serial.printf("Could not connect to MPU9250: 0x%x", c);
   }
 }
 
-void loop() {
-  
-}
-void sendMessage(String mns){
-  WiFiClient client;                                 //Inicializamos el cliente (client)
-  if (client.connect(HOST, PORT))
-  {
-    client.print(mns);
-    while (client.connected())
-    {
-      if (client.available())
-      {
-        String line = client.readStringUntil('\r');
-        Serial.println(line);
-      }
-    }
-    client.stop();                                   //Finalizamos la conexión con el servidor
-  }
-  else client.stop(); 
-}
-
-void readMPU(String* mns){
-  if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
-  {  
+void readMPU(float& _pitch, float& _roll, float& _yaw){
+  if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01){  
     myIMU.readAccelData(myIMU.accelCount);  // Read the x/y/z adc values
     myIMU.getAres();
 
@@ -145,22 +163,22 @@ void readMPU(String* mns){
 
     // Print delay in milliseconds
     if (myIMU.delt_t > 50){
-// Define output variables from updated quaternion---these are Tait-Bryan
-// angles, commonly used in aircraft orientation. In this coordinate system,
-// the positive z-axis is down toward Earth. Yaw is the angle between Sensor
-// x-axis and Earth magnetic North (or true North if corrected for local
-// declination, looking down on the sensor positive yaw is counterclockwise.
-// Pitch is angle between sensor x-axis and Earth ground plane, toward the
-// Earth is positive, up toward the sky is negative. Roll is angle between
-// sensor y-axis and Earth ground plane, y-axis up is positive roll. These
-// arise from the definition of the homogeneous rotation matrix constructed
-// from quaternions. Tait-Bryan angles as well as Euler angles are
-// non-commutative; that is, the get the correct orientation the rotations
-// must be applied in the correct order which for this configuration is yaw,
-// pitch, and then roll.
-// For more see
-// http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-// which has additional links.
+    // Define output variables from updated quaternion---these are Tait-Bryan
+    // angles, commonly used in aircraft orientation. In this coordinate system,
+    // the positive z-axis is down toward Earth. Yaw is the angle between Sensor
+    // x-axis and Earth magnetic North (or true North if corrected for local
+    // declination, looking down on the sensor positive yaw is counterclockwise.
+    // Pitch is angle between sensor x-axis and Earth ground plane, toward the
+    // Earth is positive, up toward the sky is negative. Roll is angle between
+    // sensor y-axis and Earth ground plane, y-axis up is positive roll. These
+    // arise from the definition of the homogeneous rotation matrix constructed
+    // from quaternions. Tait-Bryan angles as well as Euler angles are
+    // non-commutative; that is, the get the correct orientation the rotations
+    // must be applied in the correct order which for this configuration is yaw,
+    // pitch, and then roll.
+    // For more see
+    // http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+    // which has additional links.
       myIMU.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ() * *(getQ()+3)),
                           *getQ() * *getQ() + *(getQ()+1) * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3) * *(getQ()+3));
                     
@@ -179,23 +197,46 @@ void readMPU(String* mns){
       myIMU.yaw   -= 1.9;
       myIMU.roll  *= RAD_TO_DEG;
 
-
-// Este codigo es que agrega los valores al mensaje.
-      *mns+="ejeX:";
-      String pitch = String(myIMU.pitch);
-      *mns+=pitch;
-      
-      *mns+=";ejeY:";       
-      String roll = String(myIMU.roll);
-      *mns+=roll;
-      
-        *mns+=" ;ejeZ:";       
-      String yaw = String(myIMU.yaw);
-      *mns+=yaw;
-      *mns+=";";
+      //Saves values in the variables passed
+      _pitch = myIMU.pitch;
+      _roll  = myIMU.roll;
+      _yaw   = myIMU.yaw;
       
       myIMU.count = millis();
       myIMU.sumCount = 0;
       myIMU.sum = 0;
     }
+}
+
+//Sends message using ESP connection to host
+void sendMessage(String _message){
+  if(client.connected()) client.print(_message + "\r");
+  else Serial.println("Couldn't send message:\n " + _message + + "\nTo host\n");
+}
+
+//Checks if ESP is still connected
+void checkESP(){
+  if(!client.connected()){
+    while (!client.connect(host, port)){
+      Serial.println("Knocked down");
+    }
+  }
+}
+
+void loop() {
+  Serial.println("Reading and sending once");
+  readMPU(pitch, roll, yaw);
+  String message = "";
+  message += "ejeX:" + String(pitch) + ";";
+  message += "ejeY:" + String(roll) + ";";
+  message += "ejeZ:" + String(yaw) + ";";
+  sendMessage(message);
+  checkESP();
+  delay(interval);
+
+  // Read all the lines of the reply from server and print them to Serial
+  /*while (client.available()) {
+    String line = client.readStringUntil('\r');
+    Serial.print(line);
+  }*/
 }
