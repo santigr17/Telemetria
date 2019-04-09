@@ -49,8 +49,8 @@ RevCarScrolledTxt.place(x=400,y=50)
 
 
 #           _____________________________________
-#__________/Creando el nodemcu
-myCar = wifiConnection.NodeMCU(keep_log=True)
+#__________/Creando el cliente para NodeMCU
+myCar = wifiConnection.NodeMCU()
 myCar.start()
 
 def send (event):
