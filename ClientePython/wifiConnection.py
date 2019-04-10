@@ -41,7 +41,7 @@ class NodeMCU(Thread):
     error = False               #Variable para saber si el último mensaje fue erroneo
     interval = 0.100            #Intervalo para escribir nuevos mensajes
     loop = False                #Variable que controla el loop infinito
-    self.timeoutLimit = 3       #Tiempo de espera por la respuesta.
+    timeoutLimit = 3       #Tiempo de espera por la respuesta.
     
     
     #           ___________________________           
@@ -119,11 +119,11 @@ class NodeMCU(Thread):
                     print(str(e))
                     self.error=True
                     self.error_list.append(e)
-                    self.new_log[1] = str(e)
+                    new_log[1] = str(e)
 
                 #Se agrega el resultado y el mensaje al log
                 #Se desocupa el socket
-                self.log.append(self.new_log)            
+                self.log.append(new_log)            
                 self.busy = False
                 
             time.sleep(self.interval)
@@ -144,7 +144,7 @@ class NodeMCU(Thread):
         if(self.loop):
             if(isinstance(message,str) and len(message)>0 and message[-1]==";"):
                 self.pending_mns.append(message)
-                mnsID = "{0}:{1}".format(str(len(self.log)), str(len(self.pending)-1))
+                mnsID = "{0}:{1}".format(str(len(self.log)), str(len(self.pending_mns)-1))
         else:
             print("Start the loop before trying to send messages")
 
@@ -158,7 +158,7 @@ class NodeMCU(Thread):
         Salida: Ultimo mensaje recibido, no leÃ­do, retorna vacÃ­o si no hay mensajes en la lista de mensajes recibidos.
         """
         response = ""
-        if(len(self.recieved)>0):
+        if(len(self.received_mns)>0):
             response = self.received_mns.pop()
         return response
 
@@ -179,8 +179,8 @@ class NodeMCU(Thread):
                subi = int(subi)
                if(i<len(self.log)):
                    response = self.log[i][1].split(";")[subi]
-                else:
-                    print("No se ha enviado el mensaje")
+               else:
+                   print("No se ha enviado el mensaje")
         return response
         
                
@@ -214,4 +214,4 @@ class NodeMCU(Thread):
         if(len(self.error_list)>0):
             error = self.error_list.pop()
         return error
-    
+        
