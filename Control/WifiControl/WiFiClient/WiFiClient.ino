@@ -15,7 +15,7 @@
 const char* ssid      = "WiFiCar2";
 const char* password  = "pass1234";
 const char* host      = "192.168.43.252";
-const int   port      = 8090;
+const int   port      = 8010;
 
 //Device instances being used
 MPU9250     myIMU;
