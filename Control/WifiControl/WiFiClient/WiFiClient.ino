@@ -12,10 +12,10 @@
 #include <ESP8266WiFi.h>
 
 //Constants for network connection 
-const char* ssid      = "WiFiCar";
+const char* ssid      = "WiFiCar2";
 const char* password  = "pass1234";
-const char* host      = "192.168.43.200";
-const int   port      = 8080;
+const char* host      = "192.168.43.252";
+const int   port      = 8090;
 
 //Device instances being used
 MPU9250     myIMU;
@@ -50,14 +50,14 @@ void connectESP(){
   //Connects to the network
   WiFi.begin(ssid, password);
 
-  //Tries to connect to a server as a client as many times
+  //Tries to connect to a network as a client as many times
   for(uint8_t attempt = 0; attempt < maxAttempsNetwork; ++attempt){
     if(WiFi.status() == WL_CONNECTED) break;
     delay(500); //Try check 500ms later
     Serial.printf("Attempt %d failed to connect to network\n", attempt);
   }
 
-  //Check for connection one more time and tries to connect to host
+  //Check for connection one more time and tries to connect to server
   if(WiFi.status() == WL_CONNECTED){
     Serial.println("WiFi connected to IP: " + client.localIP());
     Serial.println("Trying to connect to host: " + String(host));
@@ -231,6 +231,7 @@ void loop() {
   message += "ejeY:" + String(roll) + ";";
   message += "ejeZ:" + String(yaw) + ";";
   sendMessage(message);
+  Serial.println(message);
   checkESP();
   delay(interval);
 
