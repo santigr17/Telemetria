@@ -17,17 +17,12 @@ WiFiClient serverClients[MAX_SRV_CLIENTS];
 unsigned long previousMillis = 0, temp = 0;
 const long interval = 100;
 
-
-#define ldr D8
-#define ab  D7 
-#define clk D6
 #define EnA D5 // 
 #define In1 D4 // D4 en HIGH : retroceder
 #define In2 D3 // D3 en HIGH : avanzar
 #define In3 D2 // 
 #define EnB D1 // 
 #define In4 D0 // 0 para ir hacia adelante
-
 
 /**
  * Lights
@@ -41,6 +36,8 @@ const long interval = 100;
  * g:
  * h:
  */
+#define clk D6
+#define ab D7 
 
 
 //
@@ -115,7 +112,6 @@ void loop() {
           serverClients[i].flush();
           String respuesta; 
           process(mensaje, &respuesta);
-          Serial.println(mensaje);
           serverClients[i].println(respuesta);
           serverClients[i].stop();
         }  
@@ -131,27 +127,23 @@ void loop() {
 }
 
 void process(String input, String * output){
-  Serial.println("Checking input....... ");
+
   int comienzo = 0, delComa, del2puntos;
   bool result = false;
   delComa = input.indexOf(';',comienzo);
   
   while(delComa>0){
     String comando = input.substring(comienzo, delComa);
-    Serial.print("Processing comando: ");
-    Serial.println(comando);
+
     del2puntos = comando.indexOf(':');
     
     if(del2puntos>0){
         String llave = comando.substring(0,del2puntos);
         String valor = comando.substring(del2puntos+1);
-        Serial.print("(llave, valor) = ");
-        Serial.print(llave);
-        Serial.println(valor);
-        *output = definir(llave,valor); 
-    }
-    else if(comando == "sense"){
-      *output = getSense();         
+        *output += definir(llave,valor); 
+      }
+    else if(comando == "sense;"){
+         *output += getSense();
     }     
     comienzo = delComa+1;
     delComa = input.indexOf(';',comienzo);
@@ -160,10 +152,7 @@ void process(String input, String * output){
 
 String definir(String llave, String valor){
   String result="ok";;
-  Serial.print("Comparing llave: ");
-  Serial.println(llave);
   if(llave == "pwm"){
-    Serial.println("Move....");
     vel = valor.toInt();
     if(vel<0){
       vel*=-1;
@@ -177,57 +166,43 @@ String definir(String llave, String valor){
   else if(llave == "dir"){
     switch (valor.toInt()){
       case 1:
-        Serial.println("Girando derecha");
         turnright();
         break;
       case -1:
-        Serial.println("Girando izquierda");
         turnleft();
         break;
        default:
-        Serial.println("directo");
         straight();
         break;
     }
   }
   else if(llave[0] == 'l'){
-    Serial.println("Cambiando Luces");
     bool encender = true;
     byte myBit = B00000000;
     if(valor == "0") encender = false;
     switch (llave[1]){
       case 'f':
-        Serial.println("Luces delanteras");
         myBit = B01111111;      
         break;
       case 'b':
-        Serial.println("Luces traseras");
         myBit = B10111111;
         break;
       case 'l':
-        Serial.println("Luces izquierda");
         myBit = B11011111;
         break;
       case 'r':
-        Serial.println("Luces derechas");
         myBit = B11101111;
         break;
       default:
-        Serial.println("Ninguna de las anteriores");
         break;
     }
-    Serial.print("Despues SwitchCase");
-    Serial.println(myBit,BIN);
     if(encender) luces = luces & myBit;
+    
     else{
       myBit = ~myBit;
-      Serial.print("~myBit: ");
-      Serial.println(myBit,BIN);
       luces = luces|myBit;
     }
-    Serial.print("luces: ");
-    Serial.println(luces, BIN);
-    shiftOut(ab, clk, LSBFIRST, luces);
+    shiftOut(ab, clk, MSBFIRST, luces);
   } 
   else{
     result = "Recived undefined key value: " + llave;
@@ -267,13 +242,7 @@ void stopCar(){
   dir = 0;
 }
 
-String getSense(){
-  int batteryLvl = analogRead(A0);
-  int light = digitalRead(ldr);
-  char sense [16];
-  sprintf(sense, "blvl:%d;ldr:%d;", batteryLvl, light);
-  Serial.print("Sensing: ");
-  Serial.println(sense);
-  return sense;
+float getSense(){
+  return analogRead(A0);
 }
 
